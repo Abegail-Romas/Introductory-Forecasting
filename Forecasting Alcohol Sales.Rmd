@@ -1,0 +1,114 @@
+---
+title: "Forecasting Alcohol Sales Using Exponential Smoothing"
+author: "Abegail Romas"
+date: "6/18/2021"
+output: 
+  pdf_document: 
+    fig_width: 4
+    fig_height: 2.5
+    fig_caption: yes
+    fig_crop: no
+documentclass: article
+classoption: a4paper
+geometry: "top=2 cm"
+---
+
+```{r setup, include=FALSE}
+library(tigerstats)
+library(knitr)
+library(fpp2)
+Data <- read.csv("C:/Users/ASUS/Downloads/S4248SM144SCEN.csv")
+y <- ts(Data[,2], start = c(1992,1), frequency = 12)
+opts_chunk$set(echo = FALSE, results = FALSE)
+```
+
+# Problem
+
+According to Ramos & Rebelo (2015), sales forecasting plays an important role in strategic and planning decisions in any retail business, as its outcome is used by many functions, such as getting a good knowledge of the sales volume of each product, planning short-term and long-term purchases, defining specific logistic needs, and projecting costs, profit levels, and capital needs.
+
+A brewery company has recorded their total monthly sales in US dollars from January 1992 to April 2021. They want to use these records to forecast future sales of their alcoholic beverages for the next two years to guide their strategy and decisions. In this report, the data will undergo analysis, transformations, and model fittings to determine the best forecasting method.
+
+# Data
+
+The seasonally adjusted dataset, which was obtained from U.S. Census Bureau (2021), contains 352 monthly observations of the alcohol sales in millions of dollars. These observations span from January 1992 to April 2021. A time series plot was made as shown in *Figure 1*. It can be observed that the data has an increasing variance and a strong trend. Hence, in the next section, data transformations will be performed before model fitting and forecasting.
+
+```{r fig.cap= "Time Plot of the Monthly Alcohol Sales"}
+autoplot(y) +
+  xlab("Year") +
+  ylab("Millions of dollars")
+```
+
+# Techniques
+
+## Data investigation and transformations
+
+### Box Cox Transformation
+
+As found in *Figure 1*, the data has an increasing variance. Therefore, the Box Cox transformation will be used to stabilize the variance. With this, the computed value of lambda is $\lambda = -0.3497$. Since this is not equal to zero, the function $(sign(y_t)|y_t|^\lambda-1)/\lambda$ will be used. The plot of the data after the Box Cox transformation is shown in *Figure 2*.
+
+```{r fig.cap= "Box Cox transformation of the series", fig.width= 3}
+lambda <- BoxCox.lambda(y)
+plot.ts(BoxCox(y, lambda=lambda))
+BC <- BoxCox(y, lambda=lambda)
+```
+
+Now, the variance of the series is stabilized. There is no need to investigate seasonality since the provided dataset has been seasonally adjusted.
+
+## Model fitting
+
+### Exponential Smoothing method
+
+The exponential smoothing method will be fitted to the series with the stabilized variance since this method allows trend. Using the exponential smoothing method, it was found that the best model for the series is the ETS (M,A,N) in which the $\sigma=0.0003$. The residuals are shown in *Figure 6* below.
+
+```{r fig.cap= "Residuals from ETS (M,A,N)", fig.height=2, fig.width=3.5}
+fit_ets <- ets(BC)
+checkresiduals(fit_ets)
+```
+
+### ARIMA Model
+
+Next, the series with stabilized variance will also be fitted to ARIMA models. It was found that the best model is the ARIMA(0,1,1)(2,1,2)[12] in which $\sigma^2=0.000001169$, or equivalently, $\sigma=0.0011$. The residuals are shown in *Figure 7* below.
+
+```{r fig.cap= "Residuals from ARIMA(2,1,0)(2,1,0)[12]", fig.height=2, fig.width=3.5}
+fit_arima <- auto.arima(BC, d = 1, D = 1, stepwise = FALSE, approximation = FALSE, trace = TRUE)
+print(summary(fit_arima))
+checkresiduals(fit_arima)
+```
+
+# Results and Discussions
+
+From the models fitted to the series, the ETS (M,A,N) from the Exponential Smoothing method had the least residual standard deviation of $\sigma=0.0003$. It can also be observed from *Figure 6* that there is no significant correlation in the residuals series. Therefore, the ETS(M,A,N) model is the best fit among the other method tried in this report and it will be used to forecast the alcohol sales for the next two years.
+
+## Forecasting with ETS(M,A,N)
+
+From the forecasts from ETS(M,A,N), the alcohol sales from 2021 to 2023 will continue to generally increase as shown in *Figure 8* below. Using the 80% confidence interval, the alcohol sales from 2021 to 2023 will range from 2.767 to 2.775 million dollars. Using the 95% confidence interval, the alcohol sales from 2021 to 2023 will range from 2.766 to 2.776 million dollars.
+
+```{r fig.cap="Forecasts of the alcohol sales for the next two years", fig.width=3.5}
+fcst <- forecast(fit_ets, h=24)
+autoplot(fcst) +
+  ylab("Millions of dollars")
+```
+
+```{r fig.cap="Zoomed in forecasts of the alcohol sales for the next two years", fig.width=3.5}
+autoplot(fcst, include = 80) +
+  ylab("Millions of dollars")
+```
+
+
+# Conclusion
+
+In this report, the forecasting problem was to determine the alcohol sales (in millions of dollars) for the next two years given the previous seasonally adjusted data from 1992 to 2021. Initial analysis and data transformations were performed before proceeding to forecasting. From the time series plot of the raw data, it was found that it has an increasing variance and a strong trend. The Box Cox transformation was used to stabilize the variance.
+
+The series was fitted using two methods that allow trend: 1) the exponential smoothing method and 2) the ARIMA model. However, the ETS(M,A,N) from the exponential smoothing method was selected for forecasting because it had the least residual standard deviation $\sigma=0.0003$ and showed no significant correlation from *Figure 6*. The forecast from this model showed a general increase of the alcohol sales from 2021 to 2023.
+
+This forecast can be used by the brewery company in projecting costs, profit levels, and capital needs for the next two years. Since there is a predicted overall increase in sales, the company is also recommended to increase their capital and define larger logistic needs.
+
+# References
+\setlength{\parindent}{-0.2in}
+\setlength{\leftskip}{0.2in}
+\setlength{\parskip}{8pt}
+\noindent
+
+Ramos, P., Santos, N., & Rebelo, R. (2015). Performance of state space and ARIMA models for consumer retail sales forecasting. Robotics and computer-integrated manufacturing, 34, 151-163.
+
+U.S. Census Bureau, Merchant Wholesalers, Except Manufacturers' Sales Branches and Offices: Nondurable Goods: Beer, Wine, and Distilled Alcoholic Beverages Sales [S4248SM144NCEN], retrieved from FRED, Federal Reserve Bank of St. Louis; https://fred.stlouisfed.org/series/S4248SM144NCEN, June 17, 2021.
